@@ -6,12 +6,15 @@ interface UIState {
     mobileSidebarOpen: boolean;
     notifications: Notification[];
     toasts: Toast[];
+    /** true when browser reports offline or a 0-status request fails */
+    networkError: boolean;
     setSidebarCollapsed: (v: boolean) => void;
     toggleSidebar: () => void;
     setMobileSidebarOpen: (v: boolean) => void;
     addToast: (toast: Omit<Toast, 'id'>) => void;
     removeToast: (id: string) => void;
     markNotificationRead: (id: string) => void;
+    setNetworkError: (v: boolean) => void;
 }
 
 export interface Toast {
@@ -53,6 +56,7 @@ export const useUIStore = create<UIState>((set, get) => ({
     mobileSidebarOpen: false,
     notifications: mockNotifications,
     toasts: [],
+    networkError: false,
     setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
     toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
     setMobileSidebarOpen: (v) => set({ mobileSidebarOpen: v }),
@@ -66,4 +70,5 @@ export const useUIStore = create<UIState>((set, get) => ({
         set((s) => ({
             notifications: s.notifications.map((n) => (n.id === id ? { ...n, read: true } : n)),
         })),
+    setNetworkError: (v) => set({ networkError: v }),
 }));

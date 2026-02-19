@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { MainLayout } from '../components/layout/MainLayout';
+import { ErrorBoundary } from '../components/ui/ErrorBoundary';
 
 // Auth Pages
 import { LoginPage } from '../modules/auth/LoginPage';
@@ -23,30 +24,32 @@ import { NotFoundPage } from '../modules/notfound/NotFoundPage';
 export const AppRouter: React.FC = () => {
     return (
         <BrowserRouter>
-            <Routes>
-                {/* Auth */}
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/select-company" element={<SelectCompanyPage />} />
+            <ErrorBoundary>
+                <Routes>
+                    {/* Auth */}
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/register" element={<RegisterPage />} />
+                    <Route path="/select-company" element={<SelectCompanyPage />} />
 
-                {/* App */}
-                <Route element={<MainLayout />}>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/dashboard" element={<DashboardPage />} />
-                    <Route path="/warehouse/*" element={<WarehousePage />} />
-                    <Route path="/production/*" element={<ProductionPage />} />
-                    <Route path="/sales/*" element={<SalesPage />} />
-                    <Route path="/purchases/*" element={<PurchasesPage />} />
-                    <Route path="/cashbank" element={<CashBankPage />} />
-                    <Route path="/reports" element={<ReportsPage />} />
-                    <Route path="/analytics" element={<AnalyticsPage />} />
-                    <Route path="/settings/*" element={<SettingsPage />} />
-                    <Route path="/help" element={<HelpPage />} />
-                </Route>
+                    {/* App — each page wrapped in its own ErrorBoundary so one crash doesn't kill the whole shell */}
+                    <Route element={<MainLayout />}>
+                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                        <Route path="/dashboard" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
+                        <Route path="/warehouse/*" element={<ErrorBoundary><WarehousePage /></ErrorBoundary>} />
+                        <Route path="/production/*" element={<ErrorBoundary><ProductionPage /></ErrorBoundary>} />
+                        <Route path="/sales/*" element={<ErrorBoundary><SalesPage /></ErrorBoundary>} />
+                        <Route path="/purchases/*" element={<ErrorBoundary><PurchasesPage /></ErrorBoundary>} />
+                        <Route path="/cashbank" element={<ErrorBoundary><CashBankPage /></ErrorBoundary>} />
+                        <Route path="/reports" element={<ErrorBoundary><ReportsPage /></ErrorBoundary>} />
+                        <Route path="/analytics" element={<ErrorBoundary><AnalyticsPage /></ErrorBoundary>} />
+                        <Route path="/settings/*" element={<ErrorBoundary><SettingsPage /></ErrorBoundary>} />
+                        <Route path="/help" element={<ErrorBoundary><HelpPage /></ErrorBoundary>} />
+                    </Route>
 
-                {/* 404 */}
-                <Route path="*" element={<NotFoundPage />} />
-            </Routes>
+                    {/* 404 */}
+                    <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+            </ErrorBoundary>
         </BrowserRouter>
     );
 };
