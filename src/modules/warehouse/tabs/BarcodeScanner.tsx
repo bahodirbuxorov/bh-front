@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Camera, CameraOff, Search, Plus, Minus, Info, Package } from 'lucide-react';
+import { Camera, CameraOff, Search, Plus, Minus, Info, Package, Zap } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Button } from '../../../components/ui/Button';
 import { Badge } from '../../../components/ui/Badge';
@@ -19,18 +19,36 @@ export const BarcodeScanner: React.FC = () => {
     const [scanned, setScanned] = useState<InventoryItem | null>(null);
     const [qty, setQty] = useState(1);
     const [scanHistory, setScanHistory] = useState<{ item: InventoryItem; action: string; qty: number; time: string }[]>([]);
+    const [isVideoReady, setIsVideoReady] = useState(false);
 
     const startCamera = useCallback(async () => {
+        setCameraError(null);
+        setIsVideoReady(false);
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'environment', width: { ideal: 1280 } },
+                video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
             });
             streamRef.current = stream;
-            if (videoRef.current) videoRef.current.srcObject = stream;
+            // Attach stream to video element
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+                // Explicitly call play() — required by some browsers
+                try {
+                    await videoRef.current.play();
+                } catch {
+                    // play() may throw if interrupted; srcObject is still attached
+                }
+            }
             setCameraActive(true);
-            setCameraError(null);
-        } catch {
-            setCameraError('Kameraga ruxsat berilmadi yoki kamera topilmadi');
+        } catch (err) {
+            const msg = err instanceof Error ? err.message : '';
+            if (msg.includes('Permission') || msg.includes('NotAllowed')) {
+                setCameraError('Kameraga ruxsat berilmadi. Brauzer sozlamalaridan ruxsat bering.');
+            } else if (msg.includes('NotFound') || msg.includes('DevicesNotFound')) {
+                setCameraError('Kamera topilmadi.');
+            } else {
+                setCameraError('Kamerani yoqishda xato yuz berdi.');
+            }
             setCameraActive(false);
         }
     }, []);
@@ -38,17 +56,28 @@ export const BarcodeScanner: React.FC = () => {
     const stopCamera = useCallback(() => {
         streamRef.current?.getTracks().forEach(t => t.stop());
         streamRef.current = null;
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
+        }
         setCameraActive(false);
+        setIsVideoReady(false);
     }, []);
 
+    // Clean up on unmount
     useEffect(() => () => stopCamera(), [stopCamera]);
 
-    // Simulate barcode scan — in production, integrate with a library like zxing
+    // onLoadedMetadata: video dimensions are known → play
+    const handleVideoReady = useCallback(() => {
+        setIsVideoReady(true);
+        videoRef.current?.play().catch(() => { });
+    }, []);
+
+    // Simulate barcode scan
     const simulateScan = useCallback(() => {
         const item = mockInventory[Math.floor(Math.random() * mockInventory.length)];
         setScanned(item);
         setQty(1);
-        addToast({ type: 'success', title: 'Skanerlandi', message: item.name });
+        addToast({ type: 'success', title: 'Skanerlandi!', message: item.name });
     }, [addToast]);
 
     const handleManualSearch = () => {
@@ -78,7 +107,7 @@ export const BarcodeScanner: React.FC = () => {
     };
 
     const statusColors = { in_stock: 'success', low_stock: 'warning', out_of_stock: 'danger' } as const;
-    const statusLabels = { in_stock: 'Omborda', low_stock: 'Kam', out_of_stock: "Yo'q" };
+    const statusLabels = { in_stock: 'Omborda', low_stock: 'Kam qoldi', out_of_stock: "Yo'q" };
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -86,46 +115,83 @@ export const BarcodeScanner: React.FC = () => {
             <div className="space-y-4">
                 {/* Camera feed */}
                 <Card padding={false} className="overflow-hidden">
-                    <div className="relative bg-slate-900 aspect-video flex items-center justify-center">
-                        {cameraActive ? (
-                            <>
-                                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-                                {/* Scan frame overlay */}
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <div className="w-48 h-32 border-2 border-indigo-400 rounded-xl relative">
-                                        <span className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-indigo-400 rounded-tl" />
-                                        <span className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-indigo-400 rounded-tr" />
-                                        <span className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-indigo-400 rounded-bl" />
-                                        <span className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-indigo-400 rounded-br" />
-                                        <div className="absolute inset-x-0 top-1/2 h-0.5 bg-indigo-500/60 animate-pulse" />
-                                    </div>
+                    {/* Video wrapper: always in DOM when cameraActive so the ref is attached */}
+                    <div className="relative bg-slate-900" style={{ minHeight: 220 }}>
+                        {/* The <video> is always rendered; hidden via opacity when not active */}
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            onLoadedMetadata={handleVideoReady}
+                            className="w-full block"
+                            style={{
+                                display: cameraActive ? 'block' : 'none',
+                                minHeight: 220,
+                                objectFit: 'cover',
+                            }}
+                        />
+
+                        {/* Scan frame overlay — shown when video is ready */}
+                        {cameraActive && isVideoReady && (
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <div className="w-52 h-36 relative">
+                                    {/* Corner markers */}
+                                    <span className="absolute top-0 left-0 w-5 h-5 border-t-2 border-l-2 border-indigo-400 rounded-tl-sm" />
+                                    <span className="absolute top-0 right-0 w-5 h-5 border-t-2 border-r-2 border-indigo-400 rounded-tr-sm" />
+                                    <span className="absolute bottom-0 left-0 w-5 h-5 border-b-2 border-l-2 border-indigo-400 rounded-bl-sm" />
+                                    <span className="absolute bottom-0 right-0 w-5 h-5 border-b-2 border-r-2 border-indigo-400 rounded-br-sm" />
+                                    {/* Scanning line */}
+                                    <div className="absolute inset-x-0 top-1/2 h-0.5 bg-indigo-400/70 animate-pulse" />
+                                    <p className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-indigo-300 whitespace-nowrap">Barkodni ramkaga kiriting</p>
                                 </div>
-                                <button onClick={simulateScan}
-                                    className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-indigo-600 text-white text-xs px-4 py-1.5 rounded-full hover:bg-indigo-700 transition">
-                                    Demo: Skan qilish
-                                </button>
-                            </>
-                        ) : (
-                            <div className="text-center p-8">
+                            </div>
+                        )}
+
+                        {/* Loading spinner while stream starts */}
+                        {cameraActive && !isVideoReady && (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900">
+                                <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mb-3" />
+                                <p className="text-xs text-slate-400">Kamera yuklanmoqda...</p>
+                            </div>
+                        )}
+
+                        {/* Demo scan button */}
+                        {cameraActive && isVideoReady && (
+                            <button onClick={simulateScan}
+                                className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-1.5 rounded-full transition flex items-center gap-1.5 shadow-lg">
+                                <Zap className="w-3 h-3" /> Demo: Skan qilish
+                            </button>
+                        )}
+
+                        {/* Idle / Error state */}
+                        {!cameraActive && (
+                            <div className="flex flex-col items-center justify-center py-12 text-center px-6" style={{ minHeight: 220 }}>
                                 {cameraError ? (
                                     <>
-                                        <CameraOff className="w-12 h-12 text-slate-500 mx-auto mb-3" />
-                                        <p className="text-sm text-slate-400">{cameraError}</p>
+                                        <CameraOff className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                                        <p className="text-sm text-red-400 mb-4 max-w-xs">{cameraError}</p>
+                                        <Button variant="primary" size="sm" icon={<Camera className="w-4 h-4" />} onClick={startCamera}>
+                                            Qayta urinish
+                                        </Button>
                                     </>
                                 ) : (
                                     <>
-                                        <Camera className="w-12 h-12 text-slate-500 mx-auto mb-3" />
+                                        <div className="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center mb-4">
+                                            <Camera className="w-8 h-8 text-slate-500" />
+                                        </div>
                                         <p className="text-sm text-slate-400 mb-4">Barkod skaner uchun kamerani yoqing</p>
+                                        <Button variant="primary" size="sm" icon={<Camera className="w-4 h-4" />} onClick={startCamera}>
+                                            Kamerani yoqish
+                                        </Button>
                                     </>
                                 )}
-                                <Button variant="primary" size="sm" icon={<Camera className="w-4 h-4" />} onClick={startCamera}>
-                                    Kamerani yoqish
-                                </Button>
                             </div>
                         )}
                     </div>
+
                     {cameraActive && (
-                        <div className="flex justify-center p-3 border-t border-slate-100 dark:border-slate-700">
+                        <div className="flex justify-center p-3 border-t border-slate-800">
                             <Button variant="outline" size="sm" icon={<CameraOff className="w-4 h-4" />} onClick={stopCamera}>
                                 Kamerani o'chirish
                             </Button>
@@ -183,7 +249,7 @@ export const BarcodeScanner: React.FC = () => {
 
                         <div className="flex items-center gap-3 mb-4">
                             <label className="text-sm text-slate-600 dark:text-slate-300">Miqdor:</label>
-                            <div className="flex items-center gap-2 border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
+                            <div className="flex items-center gap-0 border border-slate-200 dark:border-slate-600 rounded-lg overflow-hidden">
                                 <button onClick={() => setQty(q => Math.max(1, q - 1))} className="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 transition text-slate-600 dark:text-slate-300">
                                     <Minus className="w-3.5 h-3.5" />
                                 </button>
