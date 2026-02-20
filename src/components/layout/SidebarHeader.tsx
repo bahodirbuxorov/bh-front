@@ -26,6 +26,7 @@ import { useUIStore } from '../../store/uiStore';
 import { useThemeStore } from '../../store/themeStore';
 import { useAuthStore, useCompanyStore } from '../../store/authStore';
 import { useLanguageStore } from '../../store/languageStore';
+import { useBrandStore } from '../../store/brandStore';
 import type { Language } from '../../i18n';
 import { cn } from '../../utils';
 import { Avatar } from '../ui/Misc';
@@ -51,6 +52,7 @@ type NavKey = keyof typeof import('../../i18n').translations.uz;
 export const Sidebar: React.FC = () => {
     const { sidebarCollapsed, toggleSidebar, setMobileSidebarOpen, mobileSidebarOpen } = useUIStore();
     const { t } = useLanguageStore();
+    const { logoUrl, appName, tagline, primaryColor } = useBrandStore();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -82,13 +84,16 @@ export const Sidebar: React.FC = () => {
         <div className="flex flex-col h-full">
             {/* Logo */}
             <div className={cn('flex items-center gap-3 px-4 py-5 border-b border-slate-200 dark:border-slate-700', sidebarCollapsed && 'justify-center')}>
-                <div className="w-8 h-8 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shrink-0">
-                    <Building2 className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
+                    style={{ background: logoUrl ? 'transparent' : `linear-gradient(135deg, ${primaryColor}, #8b5cf6)` }}>
+                    {logoUrl
+                        ? <img src={logoUrl} alt="logo" className="w-full h-full object-contain" />
+                        : <Building2 className="w-5 h-5 text-white" />}
                 </div>
                 {!sidebarCollapsed && (
                     <div className="min-w-0">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">Mini Buxgalter</p>
-                        <p className="text-xs text-slate-400 truncate">ERP Tizimi</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white leading-tight">{appName}</p>
+                        <p className="text-xs text-slate-400 truncate">{tagline}</p>
                     </div>
                 )}
             </div>

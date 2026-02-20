@@ -12,6 +12,9 @@ import { useUIStore } from '../../store/uiStore';
 import { mockPurchaseInvoices } from '../../utils/mockData';
 import { formatCurrency, formatDate } from '../../utils';
 import type { Invoice } from '../../types';
+import { VendorScorecard } from './tabs/VendorScorecard';
+import { PurchaseRequisitions } from './tabs/PurchaseRequisitions';
+import { ThreeWayMatching } from './tabs/ThreeWayMatching';
 
 const PAGE_SIZE = 10;
 
@@ -24,6 +27,7 @@ const statusBadge = (s: Invoice['status']) => {
 export const PurchasesPage: React.FC = () => {
     const { t } = useLanguageStore();
     const { addToast } = useUIStore();
+    const [activeTab, setActiveTab] = useState<'invoices' | 'vendors' | 'requisitions' | 'matching'>('invoices');
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<'all' | Invoice['status']>('all');
     const [page, setPage] = useState(1);
@@ -84,52 +88,73 @@ export const PurchasesPage: React.FC = () => {
                 }
             />
 
-            <div className="grid grid-cols-3 gap-4">
-                <Card>
-                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Jami xaridlar</p>
-                    <p className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalPurchases)}</p>
-                </Card>
-                <Card>
-                    <p className="text-xs font-medium text-green-600 mb-1">To'langan</p>
-                    <p className="text-xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
-                </Card>
-                <Card>
-                    <p className="text-xs font-medium text-amber-600 mb-1">Qoldiq (kreditorlik)</p>
-                    <p className="text-xl font-bold text-amber-600">{formatCurrency(totalPurchases - totalPaid)}</p>
-                </Card>
+            {/* Tabs */}
+            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex-wrap">
+                {[
+                    { key: 'invoices', label: 'Fakturalar' },
+                    { key: 'vendors', label: 'Yetkazibberuvchilar' },
+                    { key: 'requisitions', label: 'Xarid Soʻrovlari' },
+                    { key: 'matching', label: '3-Tomonlama' },
+                ].map(({ key, label }) => (
+                    <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === key ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                        {label}
+                    </button>
+                ))}
             </div>
 
-            <Card padding={false}>
-                <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex flex-wrap items-center gap-3">
-                    <SearchBar value={search} onChange={v => { setSearch(v); setPage(1); }} placeholder="Yetkazib beruvchi..." className="w-72" />
-                    <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg ml-auto">
-                        {(['all', 'paid', 'partial', 'unpaid'] as const).map(s => (
-                            <button key={s} onClick={() => { setStatusFilter(s); setPage(1); }}
-                                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${statusFilter === s ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}>
-                                {s === 'all' ? 'Barchasi' : s === 'paid' ? "To'langan" : s === 'partial' ? 'Qisman' : "To'lanmagan"}
-                            </button>
-                        ))}
-                    </div>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{filtered.length} ta</p>
+            {activeTab === 'invoices' && (<>
+                <div className="grid grid-cols-3 gap-4">
+                    <Card>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Jami xaridlar</p>
+                        <p className="text-xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalPurchases)}</p>
+                    </Card>
+                    <Card>
+                        <p className="text-xs font-medium text-green-600 mb-1">To'langan</p>
+                        <p className="text-xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
+                    </Card>
+                    <Card>
+                        <p className="text-xs font-medium text-amber-600 mb-1">Qoldiq (kreditorlik)</p>
+                        <p className="text-xl font-bold text-amber-600">{formatCurrency(totalPurchases - totalPaid)}</p>
+                    </Card>
                 </div>
-                <div className="p-4">
-                    <Table
-                        columns={[
-                            { key: 'number', header: '№', sortable: true, render: r => <span className="font-mono text-purple-600 dark:text-purple-400 font-medium text-xs">{r.number}</span> },
-                            { key: 'counterparty', header: t('supplier'), sortable: true, render: r => <span className="font-medium">{r.counterparty}</span> },
-                            { key: 'date', header: t('date'), sortable: true, render: r => formatDate(r.date) },
-                            { key: 'total', header: t('total'), align: 'right', sortable: true, render: r => formatCurrency(r.total) },
-                            { key: 'paid', header: "To'landi", align: 'right', render: r => <span className="text-green-600">{formatCurrency(r.paid)}</span> },
-                            { key: 'status', header: t('status'), render: r => statusBadge(r.status) },
-                        ]}
-                        data={paged}
-                        rowKey={r => r.id}
-                    />
-                    <div className="mt-3">
-                        <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filtered.length} pageSize={PAGE_SIZE} />
+
+                <Card padding={false}>
+                    <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex flex-wrap items-center gap-3">
+                        <SearchBar value={search} onChange={v => { setSearch(v); setPage(1); }} placeholder="Yetkazib beruvchi..." className="w-72" />
+                        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg ml-auto">
+                            {(['all', 'paid', 'partial', 'unpaid'] as const).map(s => (
+                                <button key={s} onClick={() => { setStatusFilter(s); setPage(1); }}
+                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${statusFilter === s ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                                    {s === 'all' ? 'Barchasi' : s === 'paid' ? "To'langan" : s === 'partial' ? 'Qisman' : "To'lanmagan"}
+                                </button>
+                            ))}
+                        </div>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{filtered.length} ta</p>
                     </div>
-                </div>
-            </Card>
+                    <div className="p-4">
+                        <Table
+                            columns={[
+                                { key: 'number', header: '№', sortable: true, render: r => <span className="font-mono text-purple-600 dark:text-purple-400 font-medium text-xs">{r.number}</span> },
+                                { key: 'counterparty', header: t('supplier'), sortable: true, render: r => <span className="font-medium">{r.counterparty}</span> },
+                                { key: 'date', header: t('date'), sortable: true, render: r => formatDate(r.date) },
+                                { key: 'total', header: t('total'), align: 'right', sortable: true, render: r => formatCurrency(r.total) },
+                                { key: 'paid', header: "To'landi", align: 'right', render: r => <span className="text-green-600">{formatCurrency(r.paid)}</span> },
+                                { key: 'status', header: t('status'), render: r => statusBadge(r.status) },
+                            ]}
+                            data={paged}
+                            rowKey={r => r.id}
+                        />
+                        <div className="mt-3">
+                            <Pagination page={page} totalPages={totalPages} onPageChange={setPage} totalItems={filtered.length} pageSize={PAGE_SIZE} />
+                        </div>
+                    </div>
+                </Card>
+            </>)}
+
+            {activeTab === 'vendors' && <VendorScorecard />}
+            {activeTab === 'requisitions' && <PurchaseRequisitions />}
+            {activeTab === 'matching' && <ThreeWayMatching />}
 
             <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Yangi xarid" size="lg"
                 footer={<>

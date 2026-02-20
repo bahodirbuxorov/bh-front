@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, ArrowUpDown, Package } from 'lucide-react';
+import { Plus, ArrowUpDown, Package, Camera, Clock, Bell } from 'lucide-react';
 import { PageHeader } from '../../components/ui/Misc';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -12,8 +12,13 @@ import { useUIStore } from '../../store/uiStore';
 import { mockInventory } from '../../utils/mockData';
 import { formatCurrency } from '../../utils';
 import type { InventoryItem } from '../../types';
+import { BarcodeScanner } from './tabs/BarcodeScanner';
+import { InventoryAging } from './tabs/InventoryAging';
+import { SmartAlerts } from './tabs/SmartAlerts';
 
 const PAGE_SIZE = 10;
+
+type ActiveTab = 'inventory' | 'movements' | 'scanner' | 'aging' | 'alerts';
 
 export const WarehousePage: React.FC = () => {
     const { t } = useLanguageStore();
@@ -23,7 +28,7 @@ export const WarehousePage: React.FC = () => {
     const [page, setPage] = useState(1);
     const [showAddModal, setShowAddModal] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<InventoryItem | null>(null);
-    const [activeTab, setActiveTab] = useState<'inventory' | 'movements'>('inventory');
+    const [activeTab, setActiveTab] = useState<ActiveTab>('inventory');
 
     const [newItem, setNewItem] = useState({ name: '', type: 'raw', unit: 'kg', quantity: '', minQuantity: '', averageCost: '' });
 
@@ -68,15 +73,18 @@ export const WarehousePage: React.FC = () => {
             />
 
             {/* Tabs */}
-            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
+            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex-wrap">
                 {[
                     { key: 'inventory', label: t('inventory'), icon: Package },
                     { key: 'movements', label: t('stockMovements'), icon: ArrowUpDown },
+                    { key: 'scanner', label: 'Barkod Skaner', icon: Camera },
+                    { key: 'aging', label: 'Inventar Yoshi', icon: Clock },
+                    { key: 'alerts', label: 'Ogohlantirishlar', icon: Bell },
                 ].map(({ key, label, icon: Icon }) => (
                     <button
                         key={key}
-                        onClick={() => setActiveTab(key as typeof activeTab)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === key
+                        onClick={() => setActiveTab(key as ActiveTab)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === key
                             ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm'
                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
                             }`}
@@ -167,6 +175,10 @@ export const WarehousePage: React.FC = () => {
                     </div>
                 </Card>
             )}
+
+            {activeTab === 'scanner' && <BarcodeScanner />}
+            {activeTab === 'aging' && <InventoryAging />}
+            {activeTab === 'alerts' && <SmartAlerts />}
 
             {/* Add Item Modal */}
             <Modal

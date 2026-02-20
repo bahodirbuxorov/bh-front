@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Building2, Users, Calculator, DollarSign, Globe } from 'lucide-react';
+import { Building2, Users, Calculator, DollarSign, Globe, Palette, Store } from 'lucide-react';
 import { PageHeader } from '../../components/ui/Misc';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -7,23 +7,28 @@ import { Badge } from '../../components/ui/Badge';
 import { useLanguageStore } from '../../store/languageStore';
 import { useUIStore } from '../../store/uiStore';
 import { useCompanyStore } from '../../store/authStore';
+import { useTaxStore } from '../../store/taxStore';
+import { BrandingTab } from './tabs/BrandingTab';
+import { ResellerTab } from './tabs/ResellerTab';
 import type { Language } from '../../i18n';
 
 const tabs = [
     { id: 'company', label: 'Kompaniya profili', icon: Building2 },
     { id: 'users', label: 'Foydalanuvchilar', icon: Users },
-    { id: 'tax', label: 'Soliq qoidalari', icon: Calculator },
+    { id: 'tax', label: 'Soliq / QQS', icon: Calculator },
     { id: 'currency', label: 'Valyuta', icon: DollarSign },
     { id: 'language', label: 'Til', icon: Globe },
+    { id: 'branding', label: 'Brending', icon: Palette },
+    { id: 'resellers', label: 'Resellers', icon: Store },
 ];
 
 const roles = [
-    { id: 'admin', label: 'Admin', desc: 'To\'liq kirish huquqi', badge: 'danger' as const },
+    { id: 'admin', label: 'Admin', desc: "To'liq kirish huquqi", badge: 'danger' as const },
     { id: 'accountant', label: 'Buxgalter', desc: 'Moliya va hisobot', badge: 'purple' as const },
     { id: 'sales', label: 'Savdogar', desc: 'Savdo moduli', badge: 'success' as const },
     { id: 'warehouse', label: 'Omborchi', desc: 'Ombor va inventar', badge: 'info' as const },
     { id: 'production', label: 'Ishlab chiqarish', desc: 'Ishlab chiqarish moduli', badge: 'warning' as const },
-    { id: 'manager', label: 'Menejer', desc: 'Faqat ko\'rish', badge: 'default' as const },
+    { id: 'manager', label: 'Menejer', desc: "Faqat ko'rish", badge: 'default' as const },
 ];
 
 const mockUsers = [
@@ -37,7 +42,7 @@ const languages: { code: Language; label: string; native: string; flag: string }
     { code: 'uz', label: "O'zbek (lotin)", native: "O'zbekcha", flag: '🇺🇿' },
     { code: 'ru', label: 'Русский', native: 'Русский', flag: '🇷🇺' },
     { code: 'en', label: 'English', native: 'English', flag: '🇬🇧' },
-    { code: 'kk', label: "Qaraqalpaq", native: "Qaraqalpaqsha", flag: '🌐' },
+    { code: 'kk', label: 'Qaraqalpaq', native: 'Qaraqalpaqsha', flag: '🌐' },
 ];
 
 export const SettingsPage: React.FC = () => {
@@ -45,15 +50,19 @@ export const SettingsPage: React.FC = () => {
     const { language, setLanguage, t } = useLanguageStore();
     const { addToast } = useUIStore();
     const { activeCompany } = useCompanyStore();
+    const {
+        qqsEnabled, qqsRate, profitTaxRate, socialTaxRate, taxSystem,
+        setQQSEnabled, setQQSRate, setProfitTaxRate, setSocialTaxRate, setTaxSystem,
+    } = useTaxStore();
 
-    const handleSave = () => addToast({ type: 'success', title: 'Muvaffaqiyatli saqlandi', message: 'Sozlamalar yangilandi' });
+    const handleSave = () => addToast({ type: 'success', title: 'Saqlandi', message: 'Sozlamalar yangilandi' });
 
     return (
         <div className="space-y-5 animate-fade-in">
             <PageHeader title={t('settings')} subtitle="Tizim va kompaniya sozlamalari" />
 
             <div className="flex flex-col lg:flex-row gap-5">
-                {/* Sidebar tabs */}
+                {/* Sidebar */}
                 <div className="lg:w-56 shrink-0">
                     <Card padding={false}>
                         <nav className="py-2">
@@ -61,6 +70,8 @@ export const SettingsPage: React.FC = () => {
                                 <button key={id} onClick={() => setActiveTab(id)}
                                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium transition-all ${activeTab === id ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
                                     <Icon className="w-4 h-4 shrink-0" />{label}
+                                    {id === 'branding' && <Badge variant="purple" size="sm" className="ml-auto">Yeni</Badge>}
+                                    {id === 'resellers' && <Badge variant="success" size="sm" className="ml-auto">Yeni</Badge>}
                                 </button>
                             ))}
                         </nav>
@@ -68,7 +79,8 @@ export const SettingsPage: React.FC = () => {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
+                    {/* ── Company ──────────────────────────────────────── */}
                     {activeTab === 'company' && (
                         <Card>
                             <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-5">Kompaniya profili</h3>
@@ -100,9 +112,9 @@ export const SettingsPage: React.FC = () => {
                         </Card>
                     )}
 
+                    {/* ── Users ─────────────────────────────────────────── */}
                     {activeTab === 'users' && (
                         <div className="space-y-4">
-                            {/* Roles */}
                             <Card>
                                 <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-4">Rollar va huquqlar</h3>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -117,8 +129,6 @@ export const SettingsPage: React.FC = () => {
                                     ))}
                                 </div>
                             </Card>
-
-                            {/* Users */}
                             <Card>
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Foydalanuvchilar</h3>
@@ -127,9 +137,7 @@ export const SettingsPage: React.FC = () => {
                                 <div className="space-y-2">
                                     {mockUsers.map(user => (
                                         <div key={user.id} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
-                                            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">
-                                                {user.name[0]}
-                                            </div>
+                                            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0">{user.name[0]}</div>
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-sm font-medium text-slate-800 dark:text-white">{user.name}</p>
                                                 <p className="text-xs text-slate-400">{user.email}</p>
@@ -143,35 +151,68 @@ export const SettingsPage: React.FC = () => {
                         </div>
                     )}
 
+                    {/* ── Tax / QQS ─────────────────────────────────────── */}
                     {activeTab === 'tax' && (
                         <Card>
-                            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-5">Soliq qoidalari</h3>
+                            <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-5">Soliq / QQS sozlamalari</h3>
                             <div className="space-y-4">
-                                {[
-                                    { label: "QQS stavkasi (%)", defaultValue: "12" },
-                                    { label: "Foyda solig'i stavkasi (%)", defaultValue: "15" },
-                                    { label: "Ijtimoiy to'lov stavkasi (%)", defaultValue: "12" },
-                                    { label: "Shaxsiy daromad solig'i (%)", defaultValue: "12" },
-                                ].map(({ label, defaultValue }) => (
-                                    <div key={label}>
-                                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{label}</label>
-                                        <input type="number" defaultValue={defaultValue} className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                {/* QQS toggle */}
+                                <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                                    <div>
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-white">QQS (Qo'shilgan Qiymat Solig'i)</p>
+                                        <p className="text-xs text-slate-400">Fakturalarda QQS avtomat hisoblanadi</p>
                                     </div>
-                                ))}
+                                    <button
+                                        onClick={() => setQQSEnabled(!qqsEnabled)}
+                                        className={`relative w-11 h-6 rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 ${qqsEnabled ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                                        aria-label="QQS yoqish/o'chirish"
+                                    >
+                                        <span className={`absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${qqsEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                    </button>
+                                </div>
+
+                                {qqsEnabled && (
+                                    <div>
+                                        <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">QQS stavkasi (%)</label>
+                                        <div className="flex items-center gap-2">
+                                            <input type="number" min={0} max={30} value={qqsRate} onChange={e => setQQSRate(Number(e.target.value))}
+                                                className="w-28 h-9 px-3 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            <span className="text-sm text-slate-500">% (standart: 12%)</span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Foyda solig'i (%)</label>
+                                    <input type="number" min={0} max={50} value={profitTaxRate} onChange={e => setProfitTaxRate(Number(e.target.value))}
+                                        className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Ijtimoiy to'lov (%)</label>
+                                    <input type="number" min={0} max={30} value={socialTaxRate} onChange={e => setSocialTaxRate(Number(e.target.value))}
+                                        className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                </div>
+
                                 <div className="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900 rounded-xl">
                                     <div>
                                         <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Soliq hisoboti rejimi</p>
-                                        <p className="text-xs text-amber-600 dark:text-amber-400">Hozirgi holat: Umumiy soliq tizimi</p>
+                                        <p className="text-xs text-amber-600 dark:text-amber-400">Hozirgi holat: {taxSystem === 'qqs' ? "QQS to'lovchi" : taxSystem === 'simplified' ? 'Soddalashtirilgan' : 'Umumiy tizim'}</p>
                                     </div>
-                                    <select className="h-8 px-2 text-xs border border-amber-200 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white">
-                                        <option>Umumiy tizim</option><option>Soddalashtirilgan</option><option>QQS to'lovchi</option>
+                                    <select value={taxSystem} onChange={e => setTaxSystem(e.target.value as 'general' | 'simplified' | 'qqs')}
+                                        className="h-8 px-2 text-xs border border-amber-200 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-400">
+                                        <option value="general">Umumiy tizim</option>
+                                        <option value="simplified">Soddalashtirilgan</option>
+                                        <option value="qqs">QQS to'lovchi</option>
                                     </select>
                                 </div>
+
                                 <Button variant="primary" onClick={handleSave}>{t('save')}</Button>
                             </div>
                         </Card>
                     )}
 
+                    {/* ── Currency ──────────────────────────────────────── */}
                     {activeTab === 'currency' && (
                         <Card>
                             <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-5">Valyuta sozlamalari</h3>
@@ -186,7 +227,7 @@ export const SettingsPage: React.FC = () => {
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Hozirgi kurslar</p>
+                                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Hozirgi kurslar (MBB)</p>
                                     {[
                                         { code: 'USD', name: 'AQSh dollari', rate: '12,750' },
                                         { code: 'EUR', name: 'Yevro', rate: '13,820' },
@@ -209,12 +250,13 @@ export const SettingsPage: React.FC = () => {
                         </Card>
                     )}
 
+                    {/* ── Language ──────────────────────────────────────── */}
                     {activeTab === 'language' && (
                         <Card>
                             <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-5">Interfeys tili</h3>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {languages.map(lang => (
-                                    <button key={lang.code} onClick={() => { setLanguage(lang.code); addToast({ type: 'success', title: 'Til o\'zgartirildi', message: lang.native }); }}
+                                    <button key={lang.code} onClick={() => { setLanguage(lang.code); addToast({ type: 'success', title: "Til o'zgartirildi", message: lang.native }); }}
                                         className={`flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all ${language === lang.code ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' : 'border-slate-200 dark:border-slate-700 hover:border-indigo-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}>
                                         <span className="text-3xl">{lang.flag}</span>
                                         <div>
@@ -231,6 +273,12 @@ export const SettingsPage: React.FC = () => {
                             </div>
                         </Card>
                     )}
+
+                    {/* ── Branding (NEW) ─────────────────────────────────── */}
+                    {activeTab === 'branding' && <BrandingTab />}
+
+                    {/* ── Resellers (NEW) ────────────────────────────────── */}
+                    {activeTab === 'resellers' && <ResellerTab />}
                 </div>
             </div>
         </div>

@@ -10,6 +10,9 @@ import { useLanguageStore } from '../../store/languageStore';
 import { useUIStore } from '../../store/uiStore';
 import { mockInventory } from '../../utils/mockData';
 import { formatCurrency } from '../../utils';
+import { WIPTracker } from './tabs/WIPTracker';
+import { QCChecklist } from './tabs/QCChecklist';
+import { GanttChart } from './tabs/GanttChart';
 
 interface BOMRow { rawMaterialId: string; name: string; qty: number; unit: string; cost: number; }
 
@@ -22,7 +25,7 @@ const mockOrders = [
 export const ProductionPage: React.FC = () => {
     const { t } = useLanguageStore();
     const { addToast } = useUIStore();
-    const [activeTab, setActiveTab] = useState<'bom' | 'orders'>('bom');
+    const [activeTab, setActiveTab] = useState<'bom' | 'orders' | 'wip' | 'qc' | 'gantt'>('bom');
     const [bomRows, setBomRows] = useState<BOMRow[]>([
         { rawMaterialId: '1', name: "Bug'doy uni", qty: 10, unit: 'kg', cost: 48000 },
         { rawMaterialId: '3', name: 'Osh tuzi', qty: 0.2, unit: 'kg', cost: 240 },
@@ -67,10 +70,16 @@ export const ProductionPage: React.FC = () => {
             />
 
             {/* Tabs */}
-            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
-                {[{ key: 'bom', label: t('bom') }, { key: 'orders', label: t('productionOrders') }].map(({ key, label }) => (
+            <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl flex-wrap">
+                {[
+                    { key: 'bom', label: t('bom') },
+                    { key: 'orders', label: t('productionOrders') },
+                    { key: 'wip', label: 'WIP Tracker' },
+                    { key: 'qc', label: 'Sifat Tekshiruvi' },
+                    { key: 'gantt', label: 'Gantt Jadvali' },
+                ].map(({ key, label }) => (
                     <button key={key} onClick={() => setActiveTab(key as typeof activeTab)}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === key ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}>
+                        className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === key ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-200'}`}>
                         {label}
                     </button>
                 ))}
@@ -190,6 +199,10 @@ export const ProductionPage: React.FC = () => {
                     </div>
                 </Card>
             )}
+
+            {activeTab === 'wip' && <WIPTracker />}
+            {activeTab === 'qc' && <QCChecklist />}
+            {activeTab === 'gantt' && <GanttChart />}
 
             <Modal isOpen={showOrderModal} onClose={() => setShowOrderModal(false)} title="Ishlab chiqarish buyurtmasi"
                 footer={<>
